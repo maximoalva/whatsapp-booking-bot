@@ -25,25 +25,25 @@ El bot simula una conversación natural, entiende el contexto, recuerda mensajes
 1. **Clonar el repositorio:**
 
    ```bash
-   git clone [https://github.com/maximoalva/whatsapp-booking-bot.git](https://github.com/maximoalva/whatsapp-booking-bot.git)
+   git clone https://github.com/maximoalva/whatsapp-booking-bot.git
    cd whatsapp-booking-bot
    ```
 2. **Crear y activar entorno virtual:**
 
     ```bash
-    python -m venv env
+    python -m venv venv
     ```
 
     Linux/macOS:
 
     ```bash
-    source env/bin/activate
+    source venv/bin/activate
     ```
 
     Windows:
 
     ```bash
-    env\Scripts\activate
+    venv\Scripts\activate
     ```
 
 3. **Instalar dependencias:**
