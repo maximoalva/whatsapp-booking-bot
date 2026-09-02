@@ -4,3 +4,6 @@ google-auth-httplib2
 google-auth-oauthlib
 groq
 python-dotenv
+fastapi
+uvicorn
+requests
