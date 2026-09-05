@@ -1,4 +1,8 @@
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import PlainTextResponse
+import uvicorn
 import json
+import requests
 import agent
 
 def cargar_cfg(archivo: str = 'clientes.json') -> dict:
