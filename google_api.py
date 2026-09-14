@@ -3,12 +3,24 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 import datetime
 
+ZONA_HORARIA = 'America/Argentina/Buenos_Aires'
+
 # Configuración de credenciales
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/calendar'
 ]
 credenciales = Credentials.from_service_account_file('credenciales.json', scopes=SCOPES)
+
+def _obtener_servicio_calendar():
+    """
+    Función auxiliar para instanciar el cliente de Calendar de forma centralizada.
+    
+    Returns:
+        googleapiclient.discovery.Resource: Objeto de servicio de Calendar 
+        listo para ejecutar operaciones.
+    """
+    return build('calendar', 'v3', credentials=credenciales)
 
 # Google Sheets
 def obtener_servicios(id_planilla: str) -> list[dict]:
@@ -46,7 +58,7 @@ def buscar_turnos_libres(id_calendario: str, fecha: str, ventanas: list[dict], d
     if not ventanas:
         return []
 
-    servicio_calendar = build('calendar', 'v3', credentials=credenciales)
+    servicio_calendar = _obtener_servicio_calendar()
     
     # El rango de búsqueda irá desde la primera apertura hasta el último cierre del día
     inicio = f"{fecha}T{ventanas[0]['apertura']}:00-03:00" 
@@ -123,7 +135,7 @@ def agendar_turno(id_calendario: str, fecha: str, hora: str, cliente: str, servi
         dict: Un diccionario con el estado de la operación.
               Ej: {"status": "success", "mensaje": "Turno agendado correctamente"}
     """
-    servicio_calendar = build('calendar', 'v3', credentials=credenciales)
+    servicio_calendar = _obtener_servicio_calendar()
     
     # Calcular tiempo de inicio y fin como objetos datetime reales
     tiempo_inicio = datetime.datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
@@ -138,11 +150,11 @@ def agendar_turno(id_calendario: str, fecha: str, hora: str, cliente: str, servi
       'description': f'Turno agendado por WhatsApp vía Barbershop Chatbot. Cliente: {cliente}',
       'start': {
         'dateTime': inicio,
-        'timeZone': 'America/Argentina/Buenos_Aires',
+        'timeZone': ZONA_HORARIA,
       },
       'end': {
         'dateTime': fin,
-        'timeZone': 'America/Argentina/Buenos_Aires',
+        'timeZone': ZONA_HORARIA,
       },
     }
 
@@ -168,7 +180,7 @@ def cancelar_turno(id_calendario: str, fecha: str, hora: str, cliente: str, dura
     Returns:
         dict: Un diccionario con el estado de la operación.
     """
-    servicio_calendar = build('calendar', 'v3', credentials=credenciales)
+    servicio_calendar = _obtener_servicio_calendar()
     
     # Calcular tiempo de inicio y fin como objetos datetime reales
     tiempo_inicio = datetime.datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
