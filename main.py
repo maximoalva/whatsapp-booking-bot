@@ -6,6 +6,7 @@ import uvicorn
 import json
 import requests
 import agent
+from ngrok_tunnel import connect_ngrok
 
 # Cargar variables de entorno
 load_dotenv()
@@ -20,8 +21,8 @@ except FileNotFoundError:
     print(f"Error: No se encontró el archivo 'clientes.json'.")
     CLIENTES = {}
     
-# Simulamos a qué número de negocio estamos escribiendo
-numero = "5493412104851"
+# Obtenemos el número del negocio desde el .env
+numero = os.getenv("NUMERO_NEGOCIO")
 cfg = CLIENTES.get(numero)
 
 if not cfg:
@@ -31,9 +32,9 @@ if not cfg:
 memoria_usuarios = {}
 
 # Tokens
-VERIFY_TOKEN = "admin1234"
-WHATSAPP_TOKEN = "aca_va_a_ir_el_token_largo_de_meta"
-TELEFONO_ID = "aca_va_el_id_del_numero_de_prueba"
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
+TELEFONO_ID = os.getenv("TELEFONO_ID")
 
 # Endpoint de verificación
 @app.get("/webhook")
