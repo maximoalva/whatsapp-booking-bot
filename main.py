@@ -109,5 +109,8 @@ def enviar_mensaje_whatsapp(numero_destino: str, texto: str):
     return response.json()
 
 if __name__ == "__main__":
+    print("Levantando túnel Ngrok...")
+    connect_ngrok()
+    
     print("Servidor FastAPI encendido en el puerto 8000...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
