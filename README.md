@@ -14,8 +14,6 @@ El bot entiende el contexto, mantiene memoria de la conversación y se integra d
 * **Integración con Google Sheets:** Lectura dinámica de la lista de servicios y precios actualizados.
 * **Integración con WhatsApp Cloud API:** Recepción y envío de mensajes en tiempo real mediante Webhooks.
 
-## 🛠️ Tecnologías utilizadas
-
 ## Tecnologías utilizadas
 
 * **Lenguaje:** Python 3.14.7
