@@ -105,9 +105,8 @@ def enviar_mensaje_whatsapp(numero_destino: str, texto: str):
         "text": {"body": texto}
     }
     
-    # Descomentar esto cuando tengamos los tokens reales
-    # response = requests.post(url, headers=headers, json=data)
-    # return response.json()
+    response = requests.post(url, headers=headers, json=data)
+    return response.json()
 
 if __name__ == "__main__":
     print("Servidor FastAPI encendido en el puerto 8000...")
