@@ -16,7 +16,7 @@ HERRAMIENTAS = [
         "type": "function",
         "function": {
             "name": "obtener_servicios",
-            "description": "Obtiene la lista de servicios y precios de la barbería.",
+            "description": "Obtiene la lista de servicios y precios del negocio o profesional",
             "parameters": {
                 "type": "object",
                 "properties": {}, 
@@ -52,7 +52,7 @@ HERRAMIENTAS = [
                     "fecha": {"type": "string", "description": "Formato 'YYYY-MM-DD'"},
                     "hora": {"type": "string", "description": "Formato 'HH:MM'"},
                     "cliente": {"type": "string", "description": "Nombre del cliente"},
-                    "servicio": {"type": "string", "description": "Servicio elegido (ej: 'Corte y Barba')"}
+                    "servicio": {"type": "string", "description": "Servicio elegido (ej: Consulta, Sesión, Corte, Mantenimiento)"}
                 },
                 "required": ["fecha", "hora", "cliente", "servicio"]
             }
@@ -96,7 +96,7 @@ def generar_respuesta(mensaje_usuario: str, cfg: dict, historial: list) -> str:
     if not historial:
         # Prompt del Sistema: Le da personalidad, reglas y contexto temporal
         prompt_sistema = f"""
-        Sos el recepcionista virtual de {cfg.get('nombre', 'la barbería')}.
+        Sos el recepcionista virtual de {cfg.get('nombre', 'el negocio')}, un {cfg.get('rubro', 'servicio de atención al público')}.
         Tu objetivo es atender clientes por WhatsApp de forma amable, clara y directa. Tratá de 'vos'.
         Hoy es {tiempo_actual.strftime('%A, %Y-%m-%d')} y la hora actual es {tiempo_actual.strftime('%H:%M')}.
         Reglas:

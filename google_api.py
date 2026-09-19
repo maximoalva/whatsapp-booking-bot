@@ -147,7 +147,7 @@ def agendar_turno(id_calendario: str, fecha: str, hora: str, cliente: str, servi
 
     evento = {
       'summary': f'{servicio} - {cliente}',
-      'description': f'Turno agendado por WhatsApp vía Barbershop Chatbot. Cliente: {cliente}',
+      'description': f'Turno agendado por WhatsApp vía WhatsApp Booking Bot. Cliente: {cliente}',
       'start': {
         'dateTime': inicio,
         'timeZone': ZONA_HORARIA,
