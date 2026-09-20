@@ -8,6 +8,16 @@ import requests
 import agent
 from ngrok_tunnel import connect_ngrok
 
+def normalizar_numero_test(numero: str) -> str:
+    """Normaliza números argentinos para esquivar el bug del sandbox de Meta."""
+    # Si es de Argentina (549) y tiene 13 dígitos
+    if numero.startswith("549") and len(numero) == 13:
+        # Extraemos el código de área (ej: 341) y el número, y le metemos el 15
+        codigo_area = numero[3:6]
+        numero_local = numero[6:]
+        return f"54{codigo_area}15{numero_local}"
+    return numero
+
 # Cargar variables de entorno
 load_dotenv()
 
@@ -91,7 +101,9 @@ async def recibir_mensaje(request: Request):
 
 def enviar_mensaje_whatsapp(numero_destino: str, texto: str):
     """Función para pegarle a la API de Meta y devolver el mensaje al cliente."""
-    url = f"https://graph.facebook.com/v17.0/{TELEFONO_ID}/messages"
+    numero_destino = normalizar_numero_test(numero_destino)
+    
+    url = f"https://graph.facebook.com/v25.0/{TELEFONO_ID}/messages"
     
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
@@ -105,7 +117,16 @@ def enviar_mensaje_whatsapp(numero_destino: str, texto: str):
         "text": {"body": texto}
     }
     
+    print(f"🌐 [DEBUG] URL de envío: {url}")
+    
     response = requests.post(url, headers=headers, json=data)
+    
+    # --- PRINTS PARA DEBUGGEAR ---
+    print(f"📦 Enviando a Meta -> Status: {response.status_code}")
+    if response.status_code != 200:
+        print(f"❌ Error de Meta: {response.text}")
+    # -----------------------------
+    
     return response.json()
 
 if __name__ == "__main__":
