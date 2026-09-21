@@ -8,16 +8,6 @@ import requests
 import agent
 from ngrok_tunnel import connect_ngrok
 
-def normalizar_numero_test(numero: str) -> str:
-    """Normaliza números argentinos para esquivar el bug del sandbox de Meta."""
-    # Si es de Argentina (549) y tiene 13 dígitos
-    if numero.startswith("549") and len(numero) == 13:
-        # Extraemos el código de área (ej: 341) y el número, y le metemos el 15
-        codigo_area = numero[3:6]
-        numero_local = numero[6:]
-        return f"54{codigo_area}15{numero_local}"
-    return numero
-
 # Cargar variables de entorno
 load_dotenv()
 
@@ -28,7 +18,7 @@ try:
     with open('clientes.json', 'r', encoding='utf-8') as f:
         CLIENTES = json.load(f)
 except FileNotFoundError:
-    print(f"Error: No se encontró el archivo 'clientes.json'.")
+    print(f"[Config Error]: No se encontró el archivo 'clientes.json'.")
     CLIENTES = {}
     
 # Obtenemos el número del negocio desde el .env
@@ -36,7 +26,7 @@ numero = os.getenv("NUMERO_NEGOCIO")
 cfg = CLIENTES.get(numero)
 
 if not cfg:
-    print(f"Advertencia: El número {numero} no está registrado en el sistema.")
+    print(f"[Config Warning]: El número {numero} no está registrado en el sistema.")
 
 # Memoria temporal en RAM (key: número de teléfono, value: historial)
 memoria_usuarios = {}
@@ -49,58 +39,113 @@ TELEFONO_ID = os.getenv("TELEFONO_ID")
 # Endpoint de verificación
 @app.get("/webhook")
 async def verificar_webhook(request: Request):
-    """Endpoint para que Meta valide que somos los dueños del servidor."""
+    """
+    Endpoint GET para que Meta valide la propiedad del servidor.
+    
+    Args:
+        request (Request): Objeto de petición FastAPI que contiene los parámetros de consulta enviados por Meta.
+        
+    Returns:
+        PlainTextResponse: El 'hub.challenge' devuelto en texto plano si el token es correcto.
+    """
     hub_mode = request.query_params.get("hub.mode")
     hub_challenge = request.query_params.get("hub.challenge")
     hub_verify_token = request.query_params.get("hub.verify_token")
 
     if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
-        print("✅ Webhook verificado correctamente por Meta.")
+        print("[Webhook]: verificado correctamente por Meta.")
         return PlainTextResponse(content=hub_challenge, status_code=200)
     
+    print("[Webhook Error]: Falló la autenticación del token de verificación.")
     raise HTTPException(status_code=403, detail="Error de autenticación.")
 
 
 # Endpoint de mensajes
 @app.post("/webhook")
 async def recibir_mensaje(request: Request):
-    """Endpoint principal que recibe los mensajes de WhatsApp."""
+    """
+    Endpoint POST. Recibe y procesa los eventos entrantes de la API de WhatsApp.
+    Filtra los eventos de estado (entregado/leído) y envía los mensajes de texto al Agente LLM.
+    
+    Args:
+        request (Request): Objeto de petición FastAPI que contiene el JSON que envía Meta con el mensaje o estado.
+                           
+    Returns:
+        dict: Un diccionario JSON confirmando la recepción para que Meta no reintente enviar el mensaje.
+    """
     try:
         body = await request.json()
         
-        # Navegamos por el JSON gigante que manda Meta para sacar el mensaje útil
         if "object" in body and body["object"] == "whatsapp_business_account":
             entry = body["entry"][0]
             changes = entry["changes"][0]
             value = changes["value"]
             
+            # Verificamos que sea un mensaje y no una notificación de lectura/estado
             if "messages" in value:
                 mensaje_meta = value["messages"][0]
+                
+                # Por ahora, descartamos mensajes que no sean de texto (audios, imágenes, etc.)
+                if "text" not in mensaje_meta:
+                    return {"status": "ignored", "reason": "not_a_text_message"}
                 
                 # Datos del cliente
                 numero_cliente = mensaje_meta["from"]
                 texto_cliente = mensaje_meta["text"]["body"]
                 
-                print(f"\n👤 [{numero_cliente}] dice: {texto_cliente}")
+                print(f"\n👤 [{numero_cliente}]: {texto_cliente}")
                 
                 # Crear o recuperar la memoria de este cliente específico
                 if numero_cliente not in memoria_usuarios:
                     memoria_usuarios[numero_cliente] = []
                 
-                # --- PASAMOS EL MENSAJE AL AGENTE (TU LÓGICA ACTUAL) ---
+                # Procesamiento LLM
                 respuesta_bot = agent.generar_respuesta(texto_cliente, cfg, memoria_usuarios[numero_cliente])
-                print(f"🤖 Bot responde: {respuesta_bot}")
+                print(f"🤖 [Bot]: {respuesta_bot}")
                 
-                # --- ENVIAR RESPUESTA A WHATSAPP ---
+                # Enviar respuesta a WhatsApp
                 enviar_mensaje_whatsapp(numero_cliente, respuesta_bot)
 
         return {"status": "ok"}
-    except Exception as e:
-        print(f"❌ Error interno: {e}")
+    
+    except KeyError as e:
+        print(f"[Webhook Error]: {e}")
         return {"status": "error"}
+    except Exception as e:
+        print(f"[Internal Error]: {e}")
+        return {"status": "error"}
+    
+def normalizar_numero_test(numero: str) -> str:
+    """
+    Normaliza números de teléfono argentinos para esquivar el bug del sandbox de Meta.
+    Convierte el formato internacional con '9' (ej: 549341...) al formato local 
+    con '15' (ej: 5434115...) exigido por la lista de números de prueba de Meta.
+    
+    Args:
+        numero (str): El número de teléfono entrante en formato crudo de WhatsApp.
+
+    Returns:
+        str: El número modificado si es un celular argentino, o el número original intacto en caso contrario.
+    """
+    if numero.startswith("549") and len(numero) == 13:
+        # Extraemos el código de área (ej: 341) y el número, y le metemos el 15
+        codigo_area = numero[3:6]
+        numero_local = numero[6:]
+        return f"54{codigo_area}15{numero_local}"
+    return numero
 
 def enviar_mensaje_whatsapp(numero_destino: str, texto: str):
-    """Función para pegarle a la API de Meta y devolver el mensaje al cliente."""
+    """
+    Realiza una petición HTTP POST a la Graph API de Meta para enviar un mensaje de texto al cliente.
+
+    Args:
+        numero_destino (str): El número de teléfono del cliente (extraído del mensaje original).
+        texto (str): El contenido del mensaje generado por el Agente LLM.
+
+    Returns:
+        dict: Un diccionario JSON con la respuesta oficial de la API de Meta. Contiene el 'message_id' 
+              en caso de éxito, o detalles del error (código y mensaje) en caso de fallo.
+    """
     numero_destino = normalizar_numero_test(numero_destino)
     
     url = f"https://graph.facebook.com/v25.0/{TELEFONO_ID}/messages"
@@ -117,21 +162,16 @@ def enviar_mensaje_whatsapp(numero_destino: str, texto: str):
         "text": {"body": texto}
     }
     
-    print(f"🌐 [DEBUG] URL de envío: {url}")
-    
     response = requests.post(url, headers=headers, json=data)
     
-    # --- PRINTS PARA DEBUGGEAR ---
-    print(f"📦 Enviando a Meta -> Status: {response.status_code}")
     if response.status_code != 200:
-        print(f"❌ Error de Meta: {response.text}")
-    # -----------------------------
+        print(f"[Meta Error]: Status {response.status_code} - {response.text}")
     
     return response.json()
 
 if __name__ == "__main__":
-    print("Levantando túnel Ngrok...")
+    print("[Sistema]: Levantando túnel Ngrok...")
     connect_ngrok()
     
-    print("Servidor FastAPI encendido en el puerto 8000...")
+    print("[Sistema]: Servidor FastAPI encendido en el puerto 8000...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
