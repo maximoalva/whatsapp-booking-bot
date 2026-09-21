@@ -116,7 +116,8 @@ def generar_respuesta(mensaje_usuario: str, cfg: dict, historial: list) -> str:
             model=MODELO_LLM, 
             messages=historial,
             tools=HERRAMIENTAS,
-            tool_choice="auto"
+            tool_choice="auto",
+            max_tokens=165
         )
 
         respuesta = respuesta_inicial.choices[0].message
@@ -170,7 +171,8 @@ def generar_respuesta(mensaje_usuario: str, cfg: dict, historial: list) -> str:
             # Segunda llamada: La IA lee los datos crudos y arma la respuesta final
             respuesta_final = cliente.chat.completions.create(
                 model=MODELO_LLM,
-                messages=historial
+                messages=historial,
+                max_tokens=165
             )
             
             texto_final = respuesta_final.choices[0].message.content
