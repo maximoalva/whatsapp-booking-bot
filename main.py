@@ -84,13 +84,23 @@ async def recibir_mensaje(request: Request):
             # Verificamos que sea un mensaje y no una notificación de lectura/estado
             if "messages" in value:
                 mensaje_meta = value["messages"][0]
+                numero_cliente = mensaje_meta["from"]
+                tipo_mensaje = mensaje_meta.get("type", "")
                 
-                # Por ahora, descartamos mensajes que no sean de texto (audios, imágenes, etc.)
-                if "text" not in mensaje_meta:
+                # Audios
+                if tipo_mensaje == "audio":
+                    respuesta_audio = "¡Hola! Por el momento solo puedo leer mensajes de texto. ¿Podrías escribir tu consulta? 😊"
+                    print(f"\n👤 [{numero_cliente}]: [Audio]")
+                    print(f"🤖 [Bot]: {respuesta_audio}")
+                    enviar_mensaje_whatsapp(numero_cliente, respuesta_audio)
+                    return {"status": "ok", "reason": "audio_handled"}
+                
+                # Ignoramos cualquier otra cosa que no sea texto (imágenes, stickers, documentos)
+                if tipo_mensaje != "text":
+                    print(f"\n👤 [{numero_cliente}]: [Archivo multimedia/sticker ignorado]")
                     return {"status": "ignored", "reason": "not_a_text_message"}
                 
-                # Datos del cliente
-                numero_cliente = mensaje_meta["from"]
+                # Texto
                 texto_cliente = mensaje_meta["text"]["body"]
                 
                 print(f"\n👤 [{numero_cliente}]: {texto_cliente}")
